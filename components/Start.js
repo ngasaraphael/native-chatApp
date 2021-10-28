@@ -40,17 +40,17 @@ export default class Start extends React.Component {
                 <View style={styles.bgColorsContainer}>
                   <TouchableOpacity
                     accessible={true}
-                    accessibilityLabel='Turquoise Color'
+                    accessibilityLabel='Margenta Color'
                     accessibilityHint='Background color for chats'
                     style={[styles.bgColor1, styles.allBgColors]}
-                    onPress={() => this.setState({ chatBg: '#12CBC4' })}
+                    onPress={() => this.setState({ chatBg: '#5d0580' })}
                   ></TouchableOpacity>
                   <TouchableOpacity
                     accessible={true}
-                    accessibilityLabel='Darkgrey Color'
+                    accessibilityLabel='Darkblue Color'
                     accessibilityHint='Background color for chats'
                     style={[styles.bgColor2, styles.allBgColors]}
-                    onPress={() => this.setState({ chatBg: '#535c68' })}
+                    onPress={() => this.setState({ chatBg: '#05177d' })}
                   ></TouchableOpacity>
 
                   <TouchableOpacity
@@ -131,10 +131,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '300',
     color: '#757083',
-    opacity: 0.8,
     width: '88%',
     height: 50,
-    borderColor: '#535c68',
+    borderColor: '#d3dff2',
     borderWidth: 0.7,
     borderRadius: 3,
     padding: 6,
@@ -168,10 +167,10 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   bgColor1: {
-    backgroundColor: '#12CBC4',
+    backgroundColor: '#5d0580',
   },
   bgColor2: {
-    backgroundColor: '#535c68',
+    backgroundColor: '#05177d',
   },
   bgColor3: {
     backgroundColor: '#6F1E51',
