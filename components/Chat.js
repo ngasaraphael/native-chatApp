@@ -1,126 +1,185 @@
 import React from 'react';
-import { GiftedChat, Bubble } from 'react-native-gifted-chat';
-import { View, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
+import { GiftedChat, Bubble, InputToolbar } from 'react-native-gifted-chat';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 
-//Database
+//Firebase DB
 const firebase = require('firebase');
 require('firebase/firestore');
 
-//Firebase Config
-const firebaseConfig = {
-  apiKey: 'AIzaSyAyBQj-fuaGjNGTpJD5wt6WuiR9yb8G4JM',
-  authDomain: 'chatapp-f7f6c.firebaseapp.com',
-  projectId: 'chatapp-f7f6c',
-  storageBucket: 'chatapp-f7f6c.appspot.com',
-  messagingSenderId: '961812459510',
-};
-
+// The applications main chat component that renders the UI
 export default class Chat extends React.Component {
-  constructor() {
-    super();
+  constructor(props) {
+    super(props);
+
     this.state = {
       messages: [],
+      uid: 0,
       chatBg: 'white',
-      uid: '',
       user: {
-        _id: 1,
+        _id: '',
         name: '',
-        avatar: '',
       },
+      isConnected: false,
     };
 
-    //Connecting to Firebase DB
+    //Firebase Config
+    const firebaseConfig = {
+      apiKey: 'AIzaSyAyBQj-fuaGjNGTpJD5wt6WuiR9yb8G4JM',
+      authDomain: 'chatapp-f7f6c.firebaseapp.com',
+      projectId: 'chatapp-f7f6c',
+      storageBucket: 'chatapp-f7f6c.appspot.com',
+      messagingSenderId: '961812459510',
+    };
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
+
+    this.referenceChatMessages = firebase.firestore().collection('messages');
+    this.referenceMessageUser = null;
   }
 
   componentDidMount() {
-    // call props (name, chatBg) passed from Start.js
+    //call props (name, chatBg) passed from Start.js
     let name = this.props.route.params.name;
     let chatBg = this.props.route.params.chatBg;
-    //set title to name from props
     this.props.navigation.setOptions({ title: name });
 
-    //Reference to load existing messages from firebase
-    this.referenceChatMessages = firebase.firestore().collection('messages');
+    //verify if user is connected to the internet
+    NetInfo.fetch().then((connection) => {
+      if (connection.isConnected) {
+        this.setState({ isConnected: true });
+        console.log('online');
 
-    //Anonymous authentication
-    this.authUnsubscribe = firebase.auth().onAuthStateChanged((user) => {
-      if (!user) {
-        firebase.auth().signInAnonymously();
+        //auth event on firebase
+        this.authUnsubscribe = firebase.auth().onAuthStateChanged((user) => {
+          if (!user) {
+            firebase.auth().signInAnonymously();
+          }
+          this.setState({
+            uid: user.uid,
+            chatBg: chatBg,
+            messages: [],
+            user: {
+              _id: user.uid,
+              name: name,
+            },
+          });
+          //getMessage of active user from DB
+          this.referenceMessagesUser = firebase
+            .firestore()
+            .collection('messages')
+            .where('uid', '==', this.state.uid);
+          this.unsubscribe = this.referenceChatMessages
+            .orderBy('createdAt', 'desc')
+            .onSnapshot(this.onCollectionUpdate);
+        });
+      } else {
+        console.log('offline');
+        this.setState({ isConnected: false });
+        // getMessage from AsyncStorage if offline
+        this.getMessages();
       }
-      this.setState({
-        chatBg,
-        uid: user.uid,
-        user: {
-          _id: user.uid,
-          name: name,
-          avatar: 'https://placeimg.com/140/140/any',
-        },
-        messages: [],
-      });
-
-      // Create reference to messages of active users
-      this.referenceMessagesUser = firebase
-        .firestore()
-        .collection('messages')
-        .where('uid', '==', this.state.uid);
-      // Listen for collection changes
-      this.unsubscribe = this.referenceChatMessages
-        .orderBy('createdAt', 'desc')
-        .onSnapshot(this.onCollectionUpdate);
     });
   }
 
   componentWillUnmount() {
     this.authUnsubscribe();
-    this.unsubscribe();
+    this.authUnsubscribe();
   }
 
-  onCollectionUpdate = (querySnapshot) => {
-    const messages = [];
-    // const messages = [...this.state.messages];
-    // go through each document
-    querySnapshot.forEach((doc) => {
-      // get the QueryDocumentSnapshot's data
-      let data = doc.data();
-
-      messages.push({
-        _id: data._id,
-        createdAt: data.createdAt.toDate(),
-        text: data.text || '',
-        system: data.system,
-        user: data.user,
+  //getMessage from AsyncStorage
+  async getMessages() {
+    let messages = '';
+    try {
+      messages = (await AsyncStorage.getItem('messages')) || [];
+      this.setState({
+        messages: JSON.parse(messages),
       });
-    });
+    } catch (error) {
+      console.log(error.message);
+    }
+  }
 
-    this.setState({ messages });
-  };
+  //Delete messages from AsyncStorage
+  async deleteMessages() {
+    try {
+      await AsyncStorage.removeItem('messages');
+      this.setState({
+        messages: [],
+      });
+    } catch (error) {
+      console.log(error.message);
+    }
+  }
 
-  addMessage() {
+  // Add messages to DB
+  addMessages() {
     const message = this.state.messages[0];
-    // add new messages to collection
+    // add a new messages to the collection
     this.referenceChatMessages.add({
-      _id: message._id,
       uid: this.state.uid,
-      text: message.text || '',
+      _id: message._id,
       createdAt: message.createdAt,
+      text: message.text || null,
       user: message.user,
     });
   }
 
+  // Save Messages to AsyncStorage
+  async saveMessages() {
+    try {
+      await AsyncStorage.setItem(
+        'messages',
+        JSON.stringify(this.state.messages)
+      );
+    } catch (error) {
+      console.log(error.message);
+    }
+  }
+
+  // Send Message
   onSend(messages = []) {
     this.setState(
       (previousState) => ({
         messages: GiftedChat.append(previousState.messages, messages),
       }),
+
       () => {
-        // add message to localStorage
-        this.addMessage();
+        this.addMessages();
+        this.saveMessages();
       }
     );
   }
+
+  // get message from db and update state
+  onCollectionUpdate = (querySnapshot) => {
+    const messages = [];
+    querySnapshot.forEach((doc) => {
+      let data = doc.data();
+      messages.push({
+        _id: data._id,
+        createdAt: data.createdAt.toDate(),
+        text: data.text || '',
+        user: {
+          _id: data.user._id,
+          name: data.user.name,
+        },
+      });
+    });
+    this.setState({
+      messages,
+    });
+  };
+
+  //render inputtoolbar only when online
+  renderInputToolbar = (props) => {
+    if (this.state.isConnected === false) {
+    } else {
+      return <InputToolbar {...props} />;
+    }
+  };
 
   renderBubble = (props) => {
     return (
@@ -136,16 +195,15 @@ export default class Chat extends React.Component {
   };
 
   render() {
-    const { chatBg, messages, user } = this.state;
+    let { messages, user, chatBg } = this.state;
     return (
       <View style={{ flex: 1, backgroundColor: chatBg }}>
         <GiftedChat
-          renderBubble={this.renderBubble}
           messages={messages}
+          renderInputToolbar={this.renderInputToolbar}
+          renderBubble={this.renderBubble}
           onSend={(messages) => this.onSend(messages)}
-          user={{
-            _id: user._id,
-          }}
+          user={user}
         />
         {Platform.OS === 'android' ? (
           <KeyboardAvoidingView behavior='height' />
@@ -154,3 +212,18 @@ export default class Chat extends React.Component {
     );
   }
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    width: '100%',
+  },
+  // Brings over selected background color selected in home screen
+  bgcolor: (backgroundColor) => ({
+    backgroundColor: backgroundColor,
+  }),
+  chatArea: {
+    flex: 1,
+    width: '100%',
+  },
+});
