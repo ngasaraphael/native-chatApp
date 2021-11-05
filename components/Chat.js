@@ -212,18 +212,3 @@ export default class Chat extends React.Component {
     );
   }
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    width: '100%',
-  },
-  // Brings over selected background color selected in home screen
-  bgcolor: (backgroundColor) => ({
-    backgroundColor: backgroundColor,
-  }),
-  chatArea: {
-    flex: 1,
-    width: '100%',
-  },
-});
