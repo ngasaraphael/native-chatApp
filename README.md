@@ -9,3 +9,18 @@ location.
 -A page displaying the conversation, as well as an input field and submit button.  
 -The chat must provide users with two additional communication features: sending images and location data.  
 -Data gets stored online and offline.  
+
+# Libraries used
+React Native
+React Navigator
+Gifted Chat
+AsyncStorage
+Firebase
+Netinfo
+Expo (for development)
+Vysor 
+
+# Requirements
+Node v14.17.4 or above
+
+An mobile phone simulator or a mobile phone with the expo app.
