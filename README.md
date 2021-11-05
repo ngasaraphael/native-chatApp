@@ -25,4 +25,6 @@ Expo (for development).
 Vysor        
 
 # Start the App
+```
 npm start or expo start
+```
